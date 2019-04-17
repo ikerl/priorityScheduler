@@ -10,7 +10,7 @@ function log()
 
 function help()
 {
-  log "Usar $0 [params]"
+  log "Usar $0 [params] -c \"comando\""
   log ""
   log "    -l / --lock        Evitar dobles ejecuciones"
   log "    -L / --load        Abortar ejecucion si la sonda supera una determinada carga"
