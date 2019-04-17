@@ -1,0 +1,123 @@
+#!/bin/bash
+
+function log()
+{
+  :
+  if [ "$verbose" -eq 1 ]; then
+    echo "$1"
+  fi
+}
+
+function help()
+{
+  log "Usar $0 [params]"
+  log ""
+  log "    -l / --lock        Evitar dobles ejecuciones"
+  log "    -L / --load        Abortar ejecucion si la sonda supera una determinada carga"
+  log "    -t / --timeout     Establecer un timeout. Si se supera se mata el proceso"
+  log "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
+  log "    -v / --verbose     Informacion extendida"
+}
+
+function lock()
+{
+  log "[+] Generando lock de $1"
+  fileName=$1
+  lockDir="/tmp/locks"
+  mkdir -p ${lockDir}
+  if [ "$?" -ne 0 ]; then
+    # Error al generar la carpeta de locks
+    return -1
+  fi
+
+  if [ -f "${lockDir}/${fileName}" ]; then
+    log "[-] Hay un proceso corriendo"
+    # Hay un proceso corriendo
+    exit 1
+  fi
+  
+  touch "${lockDir}/${fileName}"
+  if [ "$?" -eq 0 ]; then
+    # Fichero creado con exito
+    log "[+] Fichero creado con exito"
+    return 0
+  else
+    # Error al crear el fichero
+    log "[-] Error al generar el fichero de lock"
+    exit -1
+  fi 
+}
+
+function unlock()
+{
+  log "[+] Borrando lock de $1"
+  fileName=$1
+  lockDir="/tmp/locks"
+
+  if [ ! -f "${lockDir}/${fileName}" ]; then
+    # El fichero no existe
+    return 1
+  fi
+
+  rm "${lockDir}/${fileName}"
+  if [ "$?" -ne 0 ]; then
+    # No se ha podido borrar el fichero
+    return -1
+  fi
+
+  # Fichero borrado con exito
+  return 0
+}
+
+if [[ "$#" -lt 1 ]]; then
+  help
+  exit 1
+fi
+
+# Por defecto es 1
+PRI=1
+lock=0
+verbose=0
+while [[ "$#" -gt 0 ]]; do case $1 in
+  -L|--load) load="$2"; shift;;
+  -l|--lock) lock=1;;
+  -v|--verbose) verbose=1;;
+  -c|--cmd) cmd="$2"; shift;;
+  -p|--priority) PRI="$2"; shift;;
+  -t|--timeout) timeout="$2"; shift;;
+  *) log "[-] Unknown parameter passed: $1"; help; exit 1;;
+esac; shift; done
+
+if [ -n "$load" ]; then
+  cargaSonda=$(uptime | awk -v maxLoad=${load} '{gsub(",","",$8); if ($8 > maxLoad){exit 1}else{exit 0}}')
+  if [ "$?" -eq 1 ]; then
+    log "[-] La sonda esta cargada. Abortando.."
+    exit 1
+  fi
+fi
+
+if [ "$PRI" -eq 0 ]; then
+  preCMD="ionice -c3 nice -n19 "
+elif [ "$PRI" -eq 1 ]; then
+  preCMD=""
+elif [ "$PRI" -eq 2 ]; then
+  preCMD="nice -n15 "
+else
+  log "[-] Prioridad no soportada. Abortando.."
+  exit 1
+fi
+
+
+if [ -n "$timeout" ]; then
+  timeoutCMD="timeout $timeout "
+fi
+
+if [ "$lock" -eq 1 ]; then
+  lock $(echo $cmd | awk '{print $1}')
+  log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
+  ${preCMD}${timeoutCMD}${cmd}
+  unlock $(echo $cmd | awk '{print $1}')
+else
+  log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
+  ${preCMD}${timeoutCMD}${cmd}
+fi
