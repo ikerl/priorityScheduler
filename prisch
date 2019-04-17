@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Prioridad por defecto es 1
+PRI=1
+# Por defecto no se lockea nada
+lock=0
+# Por defecto no hay informacion de log
+verbose=0
+
 function log()
 {
   :
@@ -17,6 +24,7 @@ function help()
   log "    -t / --timeout     Establecer un timeout. Si se supera se mata el proceso"
   log "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
   log "    -v / --verbose     Informacion extendida"
+  log "    -h / --help        Ayuda"
 }
 
 function lock()
@@ -70,14 +78,11 @@ function unlock()
 }
 
 if [[ "$#" -lt 1 ]]; then
+  verbose=1
   help
   exit 1
 fi
 
-# Por defecto es 1
-PRI=1
-lock=0
-verbose=0
 while [[ "$#" -gt 0 ]]; do case $1 in
   -L|--load) load="$2"; shift;;
   -l|--lock) lock=1;;
@@ -85,6 +90,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -c|--cmd) cmd="$2"; shift;;
   -p|--priority) PRI="$2"; shift;;
   -t|--timeout) timeout="$2"; shift;;
+  -h|--help) verbose=1; help; exit 1;;
   *) log "[-] Unknown parameter passed: $1"; help; exit 1;;
 esac; shift; done
 
