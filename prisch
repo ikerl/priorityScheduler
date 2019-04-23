@@ -23,6 +23,7 @@ function help()
   log "    -L / --load        Abortar ejecucion si la sonda supera una determinada carga"
   log "    -t / --timeout     Establecer un timeout. Si se supera se mata el proceso"
   log "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
+  log "    -r / --ratio       Numero de ejecuciones para que se ejecute una vez"
   log "    -v / --verbose     Informacion extendida"
   log "    -h / --help        Ayuda"
 }
@@ -30,7 +31,7 @@ function help()
 function lock()
 {
   log "[+] Generando lock de $1"
-  fileName=$1
+  fileName=$(basename $1)
   lockDir="/tmp/locks"
   mkdir -p ${lockDir}
   if [ "$?" -ne 0 ]; then
@@ -47,7 +48,7 @@ function lock()
   touch "${lockDir}/${fileName}"
   if [ "$?" -eq 0 ]; then
     # Fichero creado con exito
-    log "[+] Fichero creado con exito"
+    log "[+] Fichero de lock creado con exito"
     return 0
   else
     # Error al crear el fichero
@@ -59,7 +60,7 @@ function lock()
 function unlock()
 {
   log "[+] Borrando lock de $1"
-  fileName=$1
+  fileName=$(basename $1)
   lockDir="/tmp/locks"
 
   if [ ! -f "${lockDir}/${fileName}" ]; then
@@ -77,6 +78,58 @@ function unlock()
   return 0
 }
 
+function try()
+{
+  fileName=$(basename $1)
+  counterDir="/tmp/counters"
+
+  mkdir -p ${counterDir}
+  if [ "$?" -ne 0 ]; then
+    # Error al generar la carpeta de contadores
+    log "[-] Error al generar la carpeta de contadores"
+    exit -1
+  fi
+
+  count=$(cat ${counterDir}/${fileName} | awk '($1 ~ /[0-9]+/){print $1}')
+  if [ ! -n "$count" ]; then
+    log "[-] Actualmente no existe el fichero de contador"
+
+    echo -n "1" > "${counterDir}/${fileName}"
+    if [ "$?" -eq 0 ]; then
+      # Fichero creado con exito
+      log "[+] Fichero de contador creado con exito"
+      return 1
+    else
+      # Error al crear el fichero
+      log "[-] Error al generar el fichero de contador"
+      exit -1
+    fi 
+  fi
+  log "[+] Fichero de contador leido con exito"
+  echo -n "$((count+1))" > "${counterDir}/${fileName}"
+  if [ "$?" -eq 0 ]; then
+    # Fichero creado con exito
+    log "[+] Fichero de contador actualizado con exito"
+  else
+    # Error al crear el fichero
+    log "[-] Error al actualizar el fichero de contador"
+    exit -1
+  fi 
+  return $count
+
+}
+
+function rmTry()
+{
+  fileName=$(basename $1)
+  counterDir="/tmp/counters"
+  echo -n "1" > ${counterDir}/${fileName}
+  if [ "$?" -ne 0 ]; then
+    log "[-] Error al resetear el fichero contador"
+    exit -1
+  fi
+}
+
 if [[ "$#" -lt 1 ]]; then
   verbose=1
   help
@@ -90,6 +143,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -c|--cmd) cmd="$2"; shift;;
   -p|--priority) PRI="$2"; shift;;
   -t|--timeout) timeout="$2"; shift;;
+  -r|--ratio) ratio="$2"; shift;;
   -h|--help) verbose=1; help; exit 1;;
   *) log "[-] Unknown parameter passed: $1"; help; exit 1;;
 esac; shift; done
@@ -100,6 +154,17 @@ if [ -n "$load" ]; then
   if [ "$?" -eq 1 ]; then
     log "[-] La sonda esta cargada. Abortando.."
     exit 1
+  fi
+fi
+
+if [ -n "$ratio" ]; then
+  contador=$(try $(echo $cmd | awk '{print $1}'))
+  n=$?
+  if [ "$n" -lt "${ratio}" ]; then
+    log "[-] Abortando: Intento $n de $ratio intentos necesarios"
+    exit -1
+  else
+    rmTry $(echo $cmd | awk '{print $1}')
   fi
 fi
 
