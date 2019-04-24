@@ -94,7 +94,7 @@ function try()
   if [ ! -n "$count" ]; then
     log "[-] Actualmente no existe el fichero de contador"
 
-    echo -n "1" > "${counterDir}/${fileName}"
+    echo -n "2" > "${counterDir}/${fileName}"
     if [ "$?" -eq 0 ]; then
       # Fichero creado con exito
       log "[+] Fichero de contador creado con exito"
