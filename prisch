@@ -90,14 +90,23 @@ function try()
     exit -1
   fi
 
+  if [ ! -f "${counterDir}/${fileName}" ]; then
+    log "[-] Actualmente no existe el fichero de contador"
+    echo -n "1" > "${counterDir}/${fileName}"
+  fi
+
+  if [ "$?" -ne 0 ]; then
+      log "[-] Error al generar el fichero de contador"
+      exit -1
+  fi
+
   count=$(cat ${counterDir}/${fileName} | awk '($1 ~ /[0-9]+/){print $1}')
   if [ ! -n "$count" ]; then
-    log "[-] Actualmente no existe el fichero de contador"
-
+    log "[-] El fichero contador esta corrupto"
     echo -n "2" > "${counterDir}/${fileName}"
     if [ "$?" -eq 0 ]; then
       # Fichero creado con exito
-      log "[+] Fichero de contador creado con exito"
+      log "[+] Fichero de contador restablecido con exito"
       return 1
     else
       # Error al crear el fichero
