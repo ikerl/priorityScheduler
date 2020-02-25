@@ -16,4 +16,5 @@ Este script permite controlar la ejecución de los scripts en entornos de proces
     -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)
     -r / --ratio       Establece un ratio. Para que el comando se ejecute una vez cada n ejecuciones
     -v / --verbose     Informacion extendida
+    -d / --directory   Permite ejecutar todos los scripts de un directorio (alternativa a "-c")
     -h / --help        Ayuda

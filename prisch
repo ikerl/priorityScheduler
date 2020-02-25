@@ -25,6 +25,7 @@ function help()
   log "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
   log "    -r / --ratio       Numero de ejecuciones para que se ejecute una vez"
   log "    -v / --verbose     Informacion extendida"
+  log "    -l / --directory   Permite ejecutar todos los scripts de un directorio"
   log "    -h / --help        Ayuda"
 }
 
@@ -153,6 +154,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -p|--priority) PRI="$2"; shift;;
   -t|--timeout) timeout="$2"; shift;;
   -r|--ratio) ratio="$2"; shift;;
+  -d|--directory) directory="$2"; shift;;
   -h|--help) verbose=1; help; exit 1;;
   *) log "[-] Unknown parameter passed: $1"; help; exit 1;;
 esac; shift; done
@@ -193,12 +195,41 @@ if [ -n "$timeout" ]; then
   timeoutCMD="timeout $timeout "
 fi
 
-if [ "$lock" -eq 1 ]; then
-  lock $(echo $cmd | awk '{print $1}')
-  log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
-  ${preCMD}${timeoutCMD}${cmd}
-  unlock $(echo $cmd | awk '{print $1}')
+if [ -n "$directory" ]; then
+  # Se quieren ejecutar todos los scripts de un directorio
+  for script in ${directory}/*
+  do
+    if ! [ -x ${script} ]; then
+      log "[-] ${script} no existe o no es ejecutable"
+    else
+      if [ "$lock" -eq 1 ]; then
+        lock $(echo $script | awk '{print $1}')
+        log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
+        ${preCMD}${timeoutCMD}${script} &
+        unlock $(echo $script | awk '{print $1}')
+      else
+        log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
+        ${preCMD}${timeoutCMD}${script} &
+      fi
+    fi
+  done
+
 else
-  log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
-  ${preCMD}${timeoutCMD}${cmd}
+  # Es una ejecucion de un unico script
+  if ! [ -x ${cmd} ]; then
+    log "[-] ${cmd} no existe o no es ejecutable"
+    exit 1
+  fi
+
+  if [ "$lock" -eq 1 ]; then
+    lock $(echo $cmd | awk '{print $1}')
+    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
+    ${preCMD}${timeoutCMD}${cmd}
+    unlock $(echo $cmd | awk '{print $1}')
+  else
+    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
+    ${preCMD}${timeoutCMD}${cmd}
+  fi
 fi
+
+wait
