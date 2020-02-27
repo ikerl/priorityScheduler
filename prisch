@@ -25,7 +25,8 @@ function help()
   log "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
   log "    -r / --ratio       Numero de ejecuciones para que se ejecute una vez"
   log "    -v / --verbose     Informacion extendida"
-  log "    -l / --directory   Permite ejecutar todos los scripts de un directorio"
+  log "    -d / --directory   Permite ejecutar todos los scripts de un directorio"
+  log "    -a / --args        Permite pasarle argumentos al script que se quiere ejecutar"
   log "    -h / --help        Ayuda"
 }
 
@@ -154,6 +155,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -p|--priority) PRI="$2"; shift;;
   -t|--timeout) timeout="$2"; shift;;
   -r|--ratio) ratio="$2"; shift;;
+  -a|--args) args="$2"; shift;;
   -d|--directory) directory="$2"; shift;;
   -h|--help) verbose=1; help; exit 1;;
   *) log "[-] Unknown parameter passed: $1"; help; exit 1;;
@@ -195,6 +197,12 @@ if [ -n "$timeout" ]; then
   timeoutCMD="timeout $timeout "
 fi
 
+# Capturamos los argumentos
+for argumento in "$args"
+do
+  args_total=${args_total}${argumento}
+done
+
 if [ -n "$directory" ]; then
   # Se quieren ejecutar todos los scripts de un directorio
   for script in ${directory}/*
@@ -223,12 +231,12 @@ else
 
   if [ "$lock" -eq 1 ]; then
     lock $(echo $cmd | awk '{print $1}')
-    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
-    ${preCMD}${timeoutCMD}${cmd}
+    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd} ${args_total}"
+    ${preCMD}${timeoutCMD}${cmd} ${args_total}
     unlock $(echo $cmd | awk '{print $1}')
   else
-    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}"
-    ${preCMD}${timeoutCMD}${cmd}
+    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd} ${args_total}"
+    ${preCMD}${timeoutCMD}${cmd} ${args_total}
   fi
 fi
 
