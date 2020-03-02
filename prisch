@@ -27,16 +27,16 @@ function error()
 
 function help()
 {
-  log "Usar $0 [params] -c \"comando\""
-  log ""
-  log "    -l / --lock        Evitar dobles ejecuciones"
-  log "    -L / --load        Abortar ejecucion si la sonda supera una determinada carga"
-  log "    -t / --timeout     Establecer un timeout. Si se supera se mata el proceso"
-  log "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
-  log "    -r / --ratio       Numero de ejecuciones para que se ejecute una vez"
-  log "    -v / --verbose     Informacion extendida"
-  log "    -d / --directory   Permite ejecutar todos los scripts de un directorio"
-  log "    -h / --help        Ayuda"
+  echo "Usar $0 [params] -c \"comando\""
+  echo ""
+  echo "    -l / --lock        Evitar dobles ejecuciones"
+  echo "    -L / --load        Abortar ejecucion si la sonda supera una determinada carga"
+  echo "    -t / --timeout     Establecer un timeout. Si se supera se mata el proceso"
+  echo "    -p / --priority    Establece una prioridad. Va desde 0 (minima prioridad) hasta 2 (maxima prioridad)"
+  echo "    -r / --ratio       Numero de ejecuciones para que se ejecute una vez"
+  echo "    -v / --verbose     Informacion extendida"
+  echo "    -d / --directory   Permite ejecutar todos los scripts de un directorio"
+  echo "    -h / --help        Ayuda"
 }
 
 function lock()
@@ -169,7 +169,6 @@ function backgroundLock()
 }
 
 if [[ "$#" -lt 1 ]]; then
-  verbose=1
   help
   exit 1
 fi
