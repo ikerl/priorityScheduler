@@ -6,12 +6,22 @@ PRI=1
 lock=0
 # Por defecto no hay informacion de log
 verbose=0
+# Configuración de escritura de errores
+salida_error="/dev/stderr"  # Fichero donde se loguearan los errores
+flag_errores=1              # 1 para activar el log de errores y 0 para desactivarlo
 
 function log()
 {
-  :
+  salida_log="/dev/stdout"
   if [ "$verbose" -eq 1 ]; then
-    echo "$1"
+    echo $(date "+%d/%m/%Y %H:%M:%S: ")"$1" >> $salida_log
+  fi
+}
+
+function error()
+{
+  if [ "$flag_errores" -eq 1 ]; then
+    echo $(date "+%d/%m/%Y %H:%M:%S")": ($1) $2" >> $salida_error
   fi
 }
 
@@ -43,6 +53,7 @@ function lock()
   if [ -f "${lockDir}/${fileName}" ]; then
     log "[-] Hay un proceso corriendo"
     # Hay un proceso corriendo
+    error $1 "Hay un proceso corriendo"
     exit 1
   fi
   
@@ -54,7 +65,8 @@ function lock()
   else
     # Error al crear el fichero
     log "[-] Error al generar el fichero de lock"
-    exit -1
+    error $1 "Error al generar el fichero de lock"
+    exit 1
   fi 
 }
 
@@ -88,6 +100,7 @@ function try()
   if [ "$?" -ne 0 ]; then
     # Error al generar la carpeta de contadores
     log "[-] Error al generar la carpeta de contadores"
+    error $1 "Error al generar la carpeta de contadores"
     exit -1
   fi
 
@@ -98,6 +111,7 @@ function try()
 
   if [ "$?" -ne 0 ]; then
       log "[-] Error al generar el fichero de contador"
+      error $1 "Error al generar el fichero de contador"
       exit -1
   fi
 
@@ -112,6 +126,7 @@ function try()
     else
       # Error al crear el fichero
       log "[-] Error al generar el fichero de contador"
+      error $1 "Error al generar el fichero de contador"
       exit -1
     fi 
   fi
@@ -123,6 +138,7 @@ function try()
   else
     # Error al crear el fichero
     log "[-] Error al actualizar el fichero de contador"
+    error $1 "Error al actualizar el fichero de contador"
     exit -1
   fi 
   return $count
@@ -136,6 +152,7 @@ function rmTry()
   echo -n "1" > ${counterDir}/${fileName}
   if [ "$?" -ne 0 ]; then
     log "[-] Error al resetear el fichero contador"
+    error $1 "Error al resetear el fichero contador"
     exit -1
   fi
 }
@@ -217,6 +234,7 @@ if [ -n "$directory" ]; then
   do
     if ! [ -x ${script} ]; then
       log "[-] ${script} no existe o no es ejecutable"
+      error $script "No existe o no es ejecutable"
     else
       if [ "$lock" -eq 1 ]; then
         backgroundLock "${preCMD}" "${timeoutCMD}" "${script}" &
@@ -236,6 +254,7 @@ else
   # Es una ejecucion de un unico script
   if ! [ -x ${cmd} ]; then
     log "[-] ${cmd} no existe o no es ejecutable"
+    error $cmd "No existe o no es ejecutable"
     exit 1
   fi
 
