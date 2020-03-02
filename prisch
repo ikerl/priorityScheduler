@@ -141,6 +141,17 @@ function rmTry()
   fi
 }
 
+function backgroundLock()
+{
+    preCMD=$1
+    timeoutCMD=$2
+    script=$3
+    lock $(echo $script | awk '{print $1}')
+    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
+    ${preCMD}${timeoutCMD}${script}
+    unlock $(echo $script | awk '{print $1}')
+}
+
 if [[ "$#" -lt 1 ]]; then
   verbose=1
   help
@@ -211,10 +222,7 @@ if [ -n "$directory" ]; then
       log "[-] ${script} no existe o no es ejecutable"
     else
       if [ "$lock" -eq 1 ]; then
-        lock $(echo $script | awk '{print $1}')
-        log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
-        ${preCMD}${timeoutCMD}${script} &
-        unlock $(echo $script | awk '{print $1}')
+        backgroundLock "${preCMD}" "${timeoutCMD}" "${script}" &
       else
         log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
         ${preCMD}${timeoutCMD}${script} &
