@@ -51,10 +51,18 @@ function lock()
   fi
 
   if [ -f "${lockDir}/${fileName}" ]; then
-    log "[-] Hay un proceso corriendo"
-    # Hay un proceso corriendo
-    error $1 "Hay un proceso corriendo"
-    exit 1
+    PID=$(head -n1 "${lockDir}/${fileName}")
+    # El proceso se esta ejecutando?
+    ps --pid ${PID} &>/dev/null 2>&1
+    if [ "$?" -eq 0 ]; then
+      log "[-] Hay un proceso corriendo"
+      # Hay un proceso corriendo
+      error $1 "Hay un proceso corriendo"
+      exit 1
+    else
+      log "[+] Reiniciando lock"
+      unlock $1
+    fi
   fi
   
   touch "${lockDir}/${fileName}"
@@ -68,6 +76,28 @@ function lock()
     error $1 "Error al generar el fichero de lock"
     exit 1
   fi 
+}
+
+function setPID()
+{
+  log "[+] Guardando la PID $2 en el lock $1"
+  fileName=$(basename $1)
+  lockDir="/tmp/locks"
+
+  if [ ! -f "${lockDir}/${fileName}" ]; then
+    # El fichero no existe
+    return 1
+  fi
+
+  rm "${lockDir}/${fileName}"
+  if [ "$?" -ne 0 ]; then
+    # No se ha podido borrar el fichero
+    return -1
+  fi
+
+  # PID guardado con exito
+  echo "$2" > "${lockDir}/${fileName}"
+  return 0
 }
 
 function unlock()
@@ -157,14 +187,32 @@ function rmTry()
   fi
 }
 
-function backgroundLock()
+function parallelBackgroundLock()
 {
     preCMD=$1
     timeoutCMD=$2
     script=$3
     lock $(echo $script | awk '{print $1}')
     log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
-    ${preCMD}${timeoutCMD}${script}
+    ${preCMD}${timeoutCMD}${script} &
+    PID=$!
+    setPID $(echo $script | awk '{print $1}') ${PID}
+    wait
+    unlock $(echo $script | awk '{print $1}')
+}
+
+function processLock()
+{
+    preCMD=$1
+    timeoutCMD=$2
+    script=$3
+    args=$4
+    lock $(echo $script | awk '{print $1}')
+    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}${args}"
+    ${preCMD}${timeoutCMD}${script}${args} &
+    PID=$!
+    setPID $(echo $script | awk '{print $1}') ${PID}
+    wait ${PID}
     unlock $(echo $script | awk '{print $1}')
 }
 
@@ -183,7 +231,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -r|--ratio) ratio="$2"; shift;;
   -d|--directory) directory="$2"; shift;;
   -h|--help) verbose=1; help; exit 1;;
-  *) log "[-] Unknown parameter passed: $1"; help; exit 1;;
+  *) log "[-] Parametro desconocido: $1"; help; exit 1;;
 esac; shift; done
 
 if [ -n "$load" ]; then
@@ -236,7 +284,7 @@ if [ -n "$directory" ]; then
       error $script "No existe o no es ejecutable"
     else
       if [ "$lock" -eq 1 ]; then
-        backgroundLock "${preCMD}" "${timeoutCMD}" "${script}" &
+        parallelBackgroundLock "${preCMD}" "${timeoutCMD}" "${script}" &
       else
         log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}"
         ${preCMD}${timeoutCMD}${script} &
@@ -258,10 +306,7 @@ else
   fi
 
   if [ "$lock" -eq 1 ]; then
-    lock $cmd
-    log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}${args}"
-    ${preCMD}${timeoutCMD}${cmd}${args}
-    unlock $cmd
+    processLock "${preCMD}" "${timeoutCMD}" "${cmd}" "${args}"
   else
     log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}${args}"
     ${preCMD}${timeoutCMD}${cmd}${args}
