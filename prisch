@@ -209,7 +209,7 @@ function processLock()
     args=$4
     lock $(echo $script | awk '{print $1}')
     log "[+] Ejecutando: ${preCMD}${timeoutCMD}${script}${args}"
-    ${preCMD}${timeoutCMD}${script}${args} &
+    eval "(${preCMD}${timeoutCMD}${script}${args}) &"
     PID=$!
     setPID $(echo $script | awk '{print $1}') ${PID}
     wait ${PID}
@@ -309,7 +309,7 @@ else
     processLock "${preCMD}" "${timeoutCMD}" "${cmd}" "${args}"
   else
     log "[+] Ejecutando: ${preCMD}${timeoutCMD}${cmd}${args}"
-    ${preCMD}${timeoutCMD}${cmd}${args}
+    eval "(${preCMD}${timeoutCMD}${cmd}${args})"
   fi
 fi
 
