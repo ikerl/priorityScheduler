@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Version del script
+version="v.1.19"
 # Prioridad por defecto es 1
 PRI=1
 # Por defecto no se lockea nada
@@ -37,6 +39,13 @@ function help()
   echo "    -v / --verbose     Informacion extendida"
   echo "    -d / --directory   Permite ejecutar todos los scripts de un directorio"
   echo "    -h / --help        Ayuda"
+  echo "    -V / --version     Muestra la version actual"
+  echo "    -e / --exec        Permite ejecutar eval sobre el argumento dado"
+}
+
+function print_version()
+{
+  echo "priorityScheduler $version"	
 }
 
 function lock()
@@ -231,6 +240,8 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -r|--ratio) ratio="$2"; shift;;
   -d|--directory) directory="$2"; shift;;
   -h|--help) verbose=1; help; exit 1;;
+  -V|--version) print_version; exit 1;;
+  -e|--exec) evalArg="$2"; shift;;
   *) log "[-] Parametro desconocido: $1"; help; exit 1;;
 esac; shift; done
 
@@ -265,9 +276,13 @@ else
   exit 1
 fi
 
-
 if [ -n "$timeout" ]; then
   timeoutCMD="timeout $timeout "
+fi
+
+if [ ! -z "$evalArg" ]; then
+  log "[+] Ejecutando ${evalArg}"
+  eval "(${evalArg})"
 fi
 
 if [ -n "$directory" ]; then
